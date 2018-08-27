@@ -1,31 +1,3 @@
-/// Copyright (c) 2018 Razeware LLC
-///
-/// Permission is hereby granted, free of charge, to any person obtaining a copy
-/// of this software and associated documentation files (the "Software"), to deal
-/// in the Software without restriction, including without limitation the rights
-/// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-/// copies of the Software, and to permit persons to whom the Software is
-/// furnished to do so, subject to the following conditions:
-///
-/// The above copyright notice and this permission notice shall be included in
-/// all copies or substantial portions of the Software.
-///
-/// Notwithstanding the foregoing, you may not use, copy, modify, merge, publish,
-/// distribute, sublicense, create a derivative work, and/or sell copies of the
-/// Software in any work that is designed, intended, or marketed for pedagogical or
-/// instructional purposes related to programming, coding, application development,
-/// or information technology.  Permission for such use, copying, modification,
-/// merger, publication, distribution, sublicensing, creation of derivative works,
-/// or sale is expressly withheld.
-///
-/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-/// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-/// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-/// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-/// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-/// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-/// THE SOFTWARE.
-
  @testable import App
  import Vapor
  import XCTest
@@ -64,7 +36,7 @@
    func testAcronymCanBeSavedWithAPI() throws {
      let user = try User.create(on: conn)
      let acronym = Acronym(short: acronymShort, long: acronymLong, userID: user.id!)
-     let receivedAcronym = try app.getResponse(to: acronymsURI, method: .POST, headers: ["Content-Type": "application/json"], data: acronym, decodeTo: Acronym.self)
+    let receivedAcronym = try app.getResponse(to: acronymsURI, method: .POST, headers: ["Content-Type": "application/json"], data: acronym, decodeTo: Acronym.self, loggedInRequest: true)
 
      XCTAssertEqual(receivedAcronym.short, acronymShort)
      XCTAssertEqual(receivedAcronym.long, acronymLong)
@@ -94,7 +66,7 @@
      let newLong = "Oh My Gosh"
      let updatedAcronym = Acronym(short: acronymShort, long: newLong, userID: newUser.id!)
 
-     try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)", method: .PUT, headers: ["Content-Type": "application/json"], data: updatedAcronym)
+    try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)", method: .PUT, headers: ["Content-Type": "application/json"], data: updatedAcronym, loggedInUser: newUser)
 
      let returnedAcronym = try app.getResponse(to: "\(acronymsURI)\(acronym.id!)", decodeTo: Acronym.self)
 
@@ -109,7 +81,7 @@
 
      XCTAssertEqual(acronyms.count, 1)
 
-     _ = try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)", method: .DELETE)
+    _ = try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)", method: .DELETE, loggedInRequest: true)
      acronyms = try app.getResponse(to: acronymsURI, decodeTo: [Acronym].self)
 
      XCTAssertEqual(acronyms.count, 0)
@@ -163,7 +135,7 @@
      let user = try User.create(on: conn)
      let acronym = try Acronym.create(user: user, on: conn)
 
-     let acronymsUser = try app.getResponse(to: "\(acronymsURI)\(acronym.id!)/user", decodeTo: User.self)
+     let acronymsUser = try app.getResponse(to: "\(acronymsURI)\(acronym.id!)/user", decodeTo: User.Public.self)
      XCTAssertEqual(acronymsUser.id, user.id)
      XCTAssertEqual(acronymsUser.name, user.name)
      XCTAssertEqual(acronymsUser.username, user.username)
@@ -174,8 +146,19 @@
      let category2 = try Category.create(name: "Funny", on: conn)
      let acronym = try Acronym.create(on: conn)
 
-     _ = try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)/categories/\(category.id!)", method: .POST)
-     _ = try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)/categories/\(category2.id!)", method: .POST)
+    let request1URL =
+    "\(acronymsURI)\(acronym.id!)/categories/\(category.id!)"
+    _ = try app.sendRequest(
+        to: request1URL,
+        method: .POST,
+        loggedInRequest: true)
+
+    let request2URL =
+    "\(acronymsURI)\(acronym.id!)/categories/\(category2.id!)"
+    _ = try app.sendRequest(
+        to: request2URL,
+        method: .POST,
+        loggedInRequest: true)
 
      let categories = try app.getResponse(to: "\(acronymsURI)\(acronym.id!)/categories", decodeTo: [App.Category].self)
 
@@ -185,7 +168,12 @@
      XCTAssertEqual(categories[1].id, category2.id)
      XCTAssertEqual(categories[1].name, category2.name)
 
-     _ = try app.sendRequest(to: "\(acronymsURI)\(acronym.id!)/categories/\(category.id!)", method: .DELETE)
+    let request3URL =
+    "\(acronymsURI)\(acronym.id!)/categories/\(category.id!)"
+    _ = try app.sendRequest(
+        to: request3URL,
+        method: .DELETE,
+        loggedInRequest: true)
      let newCategories = try app.getResponse(to: "\(acronymsURI)\(acronym.id!)/categories", decodeTo: [App.Category].self)
 
      XCTAssertEqual(newCategories.count, 1)
